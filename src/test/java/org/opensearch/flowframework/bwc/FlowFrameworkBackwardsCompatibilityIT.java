@@ -33,6 +33,7 @@ public class FlowFrameworkBackwardsCompatibilityIT extends OpenSearchRestTestCas
 
     private static final ClusterType CLUSTER_TYPE = ClusterType.parse(System.getProperty("tests.rest.bwcsuite"));
     private static final String CLUSTER_NAME = System.getProperty("tests.clustername");
+    private static final String BWC_VERSION = System.getProperty("tests.plugin_bwc_version");
 
     @Override
     @Before
@@ -111,26 +112,28 @@ public class FlowFrameworkBackwardsCompatibilityIT extends OpenSearchRestTestCas
             List<Map<String, Object>> plugins = (List<Map<String, Object>>) response.get("plugins");
             Set<Object> pluginNames = plugins.stream().map(map -> map.get("name")).collect(Collectors.toSet());
             assertTrue(pluginNames.contains("opensearch-flow-framework"));
+
+            // Test change in template timestamps from 2.12 to later versions
             String workflowId = createNoopTemplate();
             Template t = getTemplate(workflowId);
             switch (CLUSTER_TYPE) {
                 case OLD:
                     // mapping for 2.12 does not include time stamps
-                    assertNull(t.createdTime());
-                    assertNull(t.lastUpdatedTime());
-                    assertNull(t.lastProvisionedTime());
+                    if (BWC_VERSION.equals("2.12.0.0")) {
+                        assertNull(t.createdTime());
+                        assertNull(t.lastUpdatedTime());
+                    }
                     break;
                 case MIXED:
                     // Time stamps may or may not be null depending on whether index has been accessed by new version node
-                    assertNull(t.lastProvisionedTime());
                     break;
                 case UPGRADED:
                     // mapping for 2.13+ includes time stamps
                     assertNotNull(t.createdTime());
                     assertEquals(t.createdTime(), t.lastUpdatedTime());
-                    assertNull(t.lastProvisionedTime());
                     break;
             }
+            assertNull(t.lastProvisionedTime());
             break;
         }
     }
