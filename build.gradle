@@ -8,14 +8,16 @@ import java.nio.file.Paths
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "2.15.0-SNAPSHOT")
+        opensearch_version = System.getProperty("opensearch.version", "2.15.0")
         buildVersionQualifier = System.getProperty("build.version_qualifier", "")
-        isSnapshot = "true" == System.getProperty("build.snapshot", "true")
+        isSnapshot = "true" == System.getProperty("build.snapshot", "false")
         version_tokens = opensearch_version.tokenize('-')
         opensearch_build = version_tokens[0] + '.0'
+        opensearch_buildx = '2.20.0.0-SNAPSHOT'
         plugin_no_snapshot = opensearch_build
         if (buildVersionQualifier) {
             opensearch_build += "-${buildVersionQualifier}"
+            opensearch_buildx += "-${buildVersionQualifier}"
             plugin_no_snapshot += "-${buildVersionQualifier}"
         }
         if (isSnapshot) {
@@ -24,7 +26,7 @@ buildscript {
         opensearch_group = "org.opensearch"
         opensearch_no_snapshot = opensearch_build.replace("-SNAPSHOT","")
         System.setProperty('tests.security.manager', 'false')
-        common_utils_version = System.getProperty("common_utils.version", opensearch_build)
+        common_utils_version = System.getProperty("common_utils.version", opensearch_buildx)
         swaggerCoreVersion = "2.2.23"
         bwcVersionShort = "2.12.0"
         bwcVersion = bwcVersionShort + ".0"
@@ -167,7 +169,7 @@ configurations {
 
 dependencies {
     implementation "org.opensearch:opensearch:${opensearch_version}"
-    api group: 'org.opensearch', name:'opensearch-ml-client', version: "${opensearch_build}"
+    api group: 'org.opensearch', name:'opensearch-ml-client', version: "${opensearch_buildx}"
     implementation "org.apache.commons:commons-lang3:${versions.commonslang}"
     api(group: 'org.opensearch.client', name: 'opensearch-rest-client', version: "${opensearch_version}") {
         exclude group: "org.apache.httpcomponents.client5", module: "httpclient5"
@@ -190,7 +192,7 @@ dependencies {
     implementation "io.swagger.parser.v3:swagger-parser:${swaggerVersion}"
     implementation "io.swagger.parser.v3:swagger-parser-v3:${swaggerVersion}"
     // Multi-tenant SDK Client
-    implementation ("org.opensearch:opensearch-remote-metadata-sdk:${opensearch_build}") {
+    implementation ("org.opensearch:opensearch-remote-metadata-sdk:${opensearch_buildx}") {
         exclude group: "org.apache.httpcomponents.client5", module: "httpclient5"
     }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
@@ -200,15 +202,21 @@ dependencies {
 
     // ZipArchive dependencies used for integration tests
     // Check the order in case of transitive dependencies
-    zipArchive group: 'org.opensearch.plugin', name:'opensearch-job-scheduler', version: "${opensearch_build}"
-    zipArchive group: 'org.opensearch.plugin', name:'opensearch-ml-plugin', version: "${opensearch_build}"
-    zipArchive group: 'org.opensearch.plugin', name:'opensearch-knn', version: "${opensearch_build}"
-    zipArchive group: 'org.opensearch.plugin', name:'neural-search', version: "${opensearch_build}"
-    secureIntegTestPluginArchive group: 'org.opensearch.plugin', name:'opensearch-security', version: "${opensearch_build}"
+    zipArchive group: 'org.opensearch.plugin', name:'opensearch-job-scheduler', version: "${opensearch_buildx}"
+    zipArchive group: 'org.opensearch.plugin', name:'opensearch-ml-plugin', version: "${opensearch_buildx}"
+    zipArchive group: 'org.opensearch.plugin', name:'opensearch-knn', version: "${opensearch_buildx}"
+    zipArchive group: 'org.opensearch.plugin', name:'neural-search', version: "${opensearch_buildx}"
+    secureIntegTestPluginArchive group: 'org.opensearch.plugin', name:'opensearch-security', version: "${opensearch_buildx}"
 
     configurations.all {
         resolutionStrategy {
             force("com.google.guava:guava:33.4.0-jre") // CVE for 31.1, keep to force transitive dependencies
+            force("org.opensearch:opensearch:2.15.0")
+            force("com.fasterxml.jackson.core:jackson-core:2.17.1")
+            force("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
+            force("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+            force("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1")
+            force("com.fasterxml.jackson:jackson-bom:2.17.1")
         }
     }
 }
