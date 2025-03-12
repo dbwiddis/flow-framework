@@ -192,7 +192,7 @@ dependencies {
     implementation "io.swagger.parser.v3:swagger-parser:${swaggerVersion}"
     implementation "io.swagger.parser.v3:swagger-parser-v3:${swaggerVersion}"
     // Multi-tenant SDK Client
-    implementation ("org.opensearch:opensearch-remote-metadata-sdk:${opensearch_buildx}") {
+    implementation ("org.opensearch:opensearch-remote-metadata-sdk:2.15.0.0-SNAPSHOT") {
         exclude group: "org.apache.httpcomponents.client5", module: "httpclient5"
     }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
