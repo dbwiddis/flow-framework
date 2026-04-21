@@ -9,6 +9,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Add agentic search workflow template with conversational agent ([#1353](https://github.com/opensearch-project/flow-framework/pull/1353))
 ### Enhancements
 ### Bug Fixes
+- Add timeout to async SDK calls in state index updates to prevent workflow steps from hanging ([#1310](https://github.com/opensearch-project/flow-framework/issues/1310))
 - Add response processor to flow agent agentic search template ([#1367](https://github.com/opensearch-project/flow-framework/pull/1367))
 - Fix hard-coded region in Bedrock template URLs ([#1354](https://github.com/opensearch-project/flow-framework/pull/1354))
 - Add missing fields to workflow steps matching ml-commons builders ([#1360](https://github.com/opensearch-project/flow-framework/pull/1360))

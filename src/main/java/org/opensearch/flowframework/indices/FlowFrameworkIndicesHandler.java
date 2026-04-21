@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -89,6 +90,8 @@ public class FlowFrameworkIndicesHandler {
     private final boolean multiTenancyEnabled;
     // Retries in case of simultaneous updates
     private static final int RETRIES = 5;
+    // Timeout for async SDK calls in seconds
+    private static final long SDK_TIMEOUT_SECONDS = 10;
 
     /**
      * constructor
@@ -996,20 +999,23 @@ public class FlowFrameworkIndicesHandler {
             .id(workflowId)
             .tenantId(tenantId)
             .build();
-        sdkClient.getDataObjectAsync(getRequest).whenComplete((r, throwable) -> {
-            if (throwable == null) {
-                try {
-                    GetResponse getResponse = GetResponse.fromXContent(r.parser());
-                    handleStateGetResponse(workflowId, tenantId, resource, operation, retries, listener, getResponse);
-                } catch (Exception e) {
-                    logger.error("Failed to parse get response", e);
-                    listener.onFailure(new FlowFrameworkException("Failed to parse get response", INTERNAL_SERVER_ERROR));
+        sdkClient.getDataObjectAsync(getRequest)
+            .toCompletableFuture()
+            .orTimeout(SDK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .whenComplete((r, throwable) -> {
+                if (throwable == null) {
+                    try {
+                        GetResponse getResponse = GetResponse.fromXContent(r.parser());
+                        handleStateGetResponse(workflowId, tenantId, resource, operation, retries, listener, getResponse);
+                    } catch (Exception e) {
+                        logger.error("Failed to parse get response", e);
+                        listener.onFailure(new FlowFrameworkException("Failed to parse get response", INTERNAL_SERVER_ERROR));
+                    }
+                } else {
+                    Exception ex = SdkClientUtils.unwrapAndConvertToException(throwable);
+                    handleStateUpdateException(workflowId, tenantId, resource, operation, 0, listener, ex);
                 }
-            } else {
-                Exception ex = SdkClientUtils.unwrapAndConvertToException(throwable);
-                handleStateUpdateException(workflowId, tenantId, resource, operation, 0, listener, ex);
-            }
-        });
+            });
     }
 
     private void handleStateGetResponse(
@@ -1042,14 +1048,17 @@ public class FlowFrameworkIndicesHandler {
                 .ifSeqNo(getResponse.getSeqNo())
                 .ifPrimaryTerm(getResponse.getPrimaryTerm())
                 .build();
-            sdkClient.updateDataObjectAsync(updateRequest).whenComplete((r, throwable) -> {
-                if (throwable == null) {
-                    handleStateUpdateSuccess(workflowId, resource, operation, listener);
-                } else {
-                    Exception e = SdkClientUtils.unwrapAndConvertToException(throwable);
-                    handleStateUpdateException(workflowId, tenantId, resource, operation, retries, listener, e);
-                }
-            });
+            sdkClient.updateDataObjectAsync(updateRequest)
+                .toCompletableFuture()
+                .orTimeout(SDK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .whenComplete((r, throwable) -> {
+                    if (throwable == null) {
+                        handleStateUpdateSuccess(workflowId, resource, operation, listener);
+                    } else {
+                        Exception e = SdkClientUtils.unwrapAndConvertToException(throwable);
+                        handleStateUpdateException(workflowId, tenantId, resource, operation, retries, listener, e);
+                    }
+                });
         } catch (Exception e) {
             String errorMessage = ParameterizedMessageFactory.INSTANCE.newMessage(
                 "Failed to parse workflow state response for {}",
